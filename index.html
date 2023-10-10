@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js"
+      integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.1/axios.min.js"
+      integrity="sha512-emSwuKiMyYedRwflbZB2ghzX8Cw8fmNVgZ6yQNNXXagFzFOaQmbvQ1vmDkddHjm5AITcBIZfC7k4ShQSjgPAmQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <title>Document</title>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <h1 class="row">Login</h1>
+      <main>
+        <div class="row">
+          <label for="username">Username</label>
+          <input type="text" name="username" id="username" />
+        </div>
+        <div class="row">
+          <label for="password">Password</label>
+          <input type="password" name="password" id="password" />
+        </div>
+
+        <div>
+          <button id="login" onclick="login()">Login</button>
+          <button id="'setting" onclick="login()">Settings</button>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      var token = '';
+      function login() {
+        const id = event.target.id;
+        const data = {
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+        };
+        axios.post('/api/login', data).then((res) => {
+          document.getElementById('username').value = '';
+          document.getElementById('password').value = '';
+          if (res && res.data && res.data.success) {
+            token = res.data.token;
+            if (id === 'login') {
+              history.pushState(null, null, '/dashboard');
+              getDashboard();
+            } else {
+              history.pushState(null, null, '/settings');
+              getSettings();
+            }
+          }
+        });
+      }
+
+      function getDashboard() {
+        axios
+          .get('/api/dashboard', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          .then((res) => {
+            if (res && res.data && res.data.success) {
+              document.querySelector('h1.row').innerHTML = 'Dashboard';
+              document.querySelector('main').innerHTML = res.data.myContent;
+            }
+          });
+      }
+
+      function getSettings() {
+        axios
+          .get('/api/settings', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          .then((res) => {
+            if (res && res.data && res.data.success) {
+              document.querySelector('h1.row').innerHTML = 'Settings';
+              document.querySelector('main').innerHTML = res.data.myContent;
+            }
+          });
+      }
+
+      window.onpopstate = function (event) {
+        if (event.state) {
+          if (event.state.page === 'dashboard') {
+            getDashboard();
+          } else if (event.state.page === 'settings') {
+            getSettings();
+          }
+        }
+      };
+
+      // Function to check token expiry
+      function checkTokenExpiry() {
+        if (!token) {
+          // Token is not set, do nothing
+          return;
+        }
+
+        const tokenData = jwt.decode(token);
+        const currentTime = Math.floor(Date.now() / 1000); // Get current time in seconds
+
+        if (tokenData.exp < currentTime) {
+          // Token has expired, reload the page to the root address
+          window.location.href = '/';
+        }
+      }
+
+      // Call checkTokenExpiry function initially to check token expiry when the page loads
+      checkTokenExpiry();
+
+      // Check token expiry periodically
+      const checkTokenInterval = setInterval(checkTokenExpiry, 60000); // 60000 milliseconds = 1 minute
+
+      // Stop checking when the page is closed
+      window.addEventListener('beforeunload', function () {
+        clearInterval(checkTokenInterval);
+      });
+    </script>
+  </body>
+</html>
